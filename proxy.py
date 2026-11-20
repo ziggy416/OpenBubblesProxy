@@ -18,8 +18,9 @@ rewrites ONLY the two fields Apple checks at activation:
     serial_number     -> per-device synthetic iMac-format serial
     unique_device_id  -> per-device UUID
 
-Everything else — hardware model, OS name, iOS version/build, validation
-data, all other commands and traffic — passes through untouched.
+Hardware model, OS name, iOS version/build, and validation data pass through
+untouched. sign-data returns 401 locally to trigger the client's fallback
+without forwarding a command that JJTech's ValidationRelay does not handle.
 
 DYNAMIC IDENTITIES (no hardcoded devices):
 Each provider device is identified by its real UDID. The first time a new
@@ -176,6 +177,15 @@ class Handler(BaseHTTPRequestHandler):
         rust = self._is_rust_client()
         client = "rust" if rust else "dart"
         log(f"[proxy] {client} client -> {command} (stage {stage})")
+
+        # JJTech's ValidationRelay does not handle sign-data. Forwarding it
+        # can time out and disconnect the provider; use the client's fallback.
+        if command == "sign-data":
+            log("[proxy] sign-data: returning 401 for client fallback")
+            self.send_response(401)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
 
         url = upstream + self.path
         req = urllib.request.Request(url, data=(body or None), method="POST")

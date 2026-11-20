@@ -7,8 +7,9 @@ registration using your own relay iPhone ([JJTech's ValidationRelay](https://git
 
 Apple now rejects the identity the relay reports at the activation step. This
 proxy sits between the OpenBubbles app and your registration relay and
-rewrites the two fields Apple checks there (serial + UDID). Everything else
-passes through untouched, so registration and phone-number setup work again.
+rewrites the two fields Apple checks there (serial + UDID). It also returns
+401 locally for `sign-data` so OpenBubbles uses its fallback instead of sending
+an unsupported command to JJTech's ValidationRelay. Other requests pass through.
 No devices are hardcoded: each relay iPhone gets its own identity, generated
 and remembered automatically.
 
@@ -36,8 +37,8 @@ Bare Python (no Docker): `python proxy.py` — standard library only.
 
 ## Notes
 
-- `sign-data` returning 401 in the logs is normal; the app falls back
-  automatically.
+- `sign-data` returns 401 locally; the app falls back automatically. This
+  avoids an unsupported-command timeout that can disconnect the relay iPhone.
 - Apple can change its rules at any time; this is the same category of
   interoperability behavior as the client apps themselves.
 
